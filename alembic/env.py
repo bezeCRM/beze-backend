@@ -9,6 +9,8 @@ from sqlmodel import SQLModel
 from app.settings import settings
 from app.modules.users.models import User  # noqa: F401
 from app.modules.auth.models import RefreshToken  # noqa: F401
+from app.modules.categories.models import Category  # noqa: F401
+from app.modules.products.models import Product  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
