@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-from typing import Optional, cast
+from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.sql.elements import ColumnElement
 
-from app.modules.products.models import Product
+from app.modules.categories.models import Category
+from app.modules.products.models import Product, ProductPhoto
 
 
 class ProductsRepository:
     @staticmethod
-    async def list(
+    async def list_products(
         session: AsyncSession,
         *,
         owner_id: UUID,
@@ -20,53 +20,76 @@ class ProductsRepository:
         offset: int,
         category_id: UUID | None,
     ) -> list[Product]:
-        c_owner = cast(ColumnElement[bool], Product.__table__.c.owner_id == owner_id)
-        stmt = select(Product).where(c_owner)
+        p = Product.__table__.c
 
+        stmt = (
+            select(Product)
+            .where(p.owner_id == owner_id)
+            .order_by(p.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
         if category_id is not None:
-            c_cat = cast(ColumnElement[bool], Product.__table__.c.category_id == category_id)
-            stmt = stmt.where(c_cat)
+            stmt = stmt.where(p.category_id == category_id)
 
-        stmt = stmt.order_by(Product.__table__.c.created_at.desc()).limit(limit).offset(offset)
         res = await session.execute(stmt)
         return list(res.scalars().all())
 
     @staticmethod
-    async def get(
+    async def get_product(
         session: AsyncSession,
         *,
         owner_id: UUID,
         product_id: UUID,
     ) -> Optional[Product]:
-        c_owner = cast(ColumnElement[bool], Product.__table__.c.owner_id == owner_id)
-        c_id = cast(ColumnElement[bool], Product.__table__.c.id == product_id)
-        stmt = select(Product).where(c_owner, c_id)
+        p = Product.__table__.c
+        stmt = select(Product).where(p.owner_id == owner_id, p.id == product_id)
         res = await session.execute(stmt)
-        return res.scalar_one_or_none()
+        return res.scalars().one_or_none()
 
     @staticmethod
-    async def create(
+    async def get_categories_by_ids(
         session: AsyncSession,
         *,
         owner_id: UUID,
-        name: str,
-        description: str | None,
-        price: int,
-        category_id: UUID | None,
-        is_active: bool,
-    ) -> Product:
-        obj = Product(
-            owner_id=owner_id,
-            name=name,
-            description=description,
-            price=price,
-            category_id=category_id,
-            is_active=is_active,
-        )
-        session.add(obj)
-        await session.flush()
-        return obj
+        category_ids: set[UUID],
+    ) -> dict[UUID, Category]:
+        if not category_ids:
+            return {}
+
+        c = Category.__table__.c
+        stmt = select(Category).where(c.owner_id == owner_id, c.id.in_(category_ids))
+        res = await session.execute(stmt)
+        items = list(res.scalars().all())
+        return {cat.id: cat for cat in items}
 
     @staticmethod
-    async def delete(session: AsyncSession, obj: Product) -> None:
-        await session.delete(obj)
+    async def get_photos_by_product_ids(
+        session: AsyncSession,
+        *,
+        product_ids: list[UUID],
+    ) -> dict[UUID, list[ProductPhoto]]:
+        if not product_ids:
+            return {}
+
+        pp = ProductPhoto.__table__.c
+        stmt = select(ProductPhoto).where(pp.product_id.in_(product_ids)).order_by(pp.created_at.asc())
+        res = await session.execute(stmt)
+        items = list(res.scalars().all())
+
+        out: dict[UUID, list[ProductPhoto]] = {pid: [] for pid in product_ids}
+        for photo in items:
+            out[photo.product_id].append(photo)
+        return out
+
+    @staticmethod
+    async def replace_photos(
+        session: AsyncSession,
+        *,
+        product_id: UUID,
+        photo_uris: list[str],
+    ) -> None:
+        pp = ProductPhoto.__table__.c
+        await session.execute(delete(ProductPhoto).where(pp.product_id == product_id))
+        for uri in photo_uris:
+            session.add(ProductPhoto(product_id=product_id, uri=uri))

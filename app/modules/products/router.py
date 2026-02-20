@@ -6,15 +6,38 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_session
+from app.modules.products.repository import ProductsRepository
 from app.modules.products.schemas import ProductCreate, ProductRead, ProductUpdate
 from app.modules.products.service import (
     CategoryNotFoundError,
     ProductAlreadyExistsError,
+    ProductNotFoundError,
     ProductsService,
 )
 from app.modules.users.models import User
 
 router = APIRouter(prefix="/products", tags=["products"])
+
+
+def _to_product_read(
+    *,
+    product,
+    category,
+    photoes,
+) -> ProductRead:
+    return ProductRead(
+        id=product.id,
+        name=product.name,
+        category=category,
+        price=product.price,
+        fillings=product.fillings,
+        ingredients=product.ingredients,
+        recipe=product.recipe,
+        unit=product.unit,
+        photoes=photoes if photoes else None,
+        createdAt=product.created_at,
+        updatedAt=product.updated_at,
+    )
 
 
 @router.get("", response_model=list[ProductRead])
@@ -25,8 +48,11 @@ async def list_products(
     offset: int = Query(0, ge=0),
     category_id: UUID | None = Query(default=None),
 ):
+    svc = ProductsService()
+    repo = ProductsRepository()
+
     try:
-        return await ProductsService.list(
+        products = await svc.list(
             session,
             owner_id=current_user.id,
             limit=limit,
@@ -36,6 +62,24 @@ async def list_products(
     except CategoryNotFoundError:
         raise HTTPException(status_code=404, detail="category not found")
 
+    product_ids = [p.id for p in products]
+    category_ids = {p.category_id for p in products if p.category_id is not None}
+
+    categories_by_id = await repo.get_categories_by_ids(session, owner_id=current_user.id, category_ids=category_ids)
+    photos_by_pid = await repo.get_photos_by_product_ids(session, product_ids=product_ids)
+
+    out: list[ProductRead] = []
+    for p in products:
+        cat = categories_by_id.get(p.category_id) if p.category_id is not None else None
+        out.append(
+            _to_product_read(
+                product=p,
+                category=cat,
+                photoes=photos_by_pid.get(p.id, []),
+            )
+        )
+    return out
+
 
 @router.get("/{product_id}", response_model=ProductRead)
 async def get_product(
@@ -43,10 +87,27 @@ async def get_product(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
+    svc = ProductsService()
+    repo = ProductsRepository()
+
     try:
-        return await ProductsService.get_or_404(session, owner_id=current_user.id, product_id=product_id)
-    except KeyError:
+        p = await svc.get_or_404(session, owner_id=current_user.id, product_id=product_id)
+    except ProductNotFoundError:
         raise HTTPException(status_code=404, detail="product not found")
+
+    categories_by_id = await repo.get_categories_by_ids(
+        session,
+        owner_id=current_user.id,
+        category_ids={p.category_id} if p.category_id is not None else set(),
+    )
+    photos_by_pid = await repo.get_photos_by_product_ids(session, product_ids=[p.id])
+
+    cat = categories_by_id.get(p.category_id) if p.category_id is not None else None
+    return _to_product_read(
+        product=p,
+        category=cat,
+        photoes=photos_by_pid.get(p.id, []),
+    )
 
 
 @router.post("", response_model=ProductRead, status_code=status.HTTP_201_CREATED)
@@ -55,20 +116,49 @@ async def create_product(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
+    svc = ProductsService()
+    repo = ProductsRepository()
+
+    # important: mode="json" converts uuid to str for jsonb
+    fillings = None if payload.fillings is None else [f.model_dump(mode="json", by_alias=True) for f in payload.fillings]
+    ingredients = (
+        None
+        if payload.ingredients is None
+        else [i.model_dump(mode="json", by_alias=True) for i in payload.ingredients]
+    )
+    photo_uris = payload.photo_uris or []
+
     try:
-        return await ProductsService.create(
+        p = await svc.create(
             session,
             owner_id=current_user.id,
             name=payload.name,
-            description=payload.description,
             price=payload.price,
             category_id=payload.category_id,
-            is_active=payload.is_active,
+            recipe=payload.recipe,
+            unit=payload.unit,
+            fillings=fillings,
+            ingredients=ingredients,
+            photo_uris=photo_uris,
         )
     except CategoryNotFoundError:
         raise HTTPException(status_code=404, detail="category not found")
     except ProductAlreadyExistsError:
         raise HTTPException(status_code=409, detail="product already exists")
+
+    categories_by_id = await repo.get_categories_by_ids(
+        session,
+        owner_id=current_user.id,
+        category_ids={p.category_id} if p.category_id is not None else set(),
+    )
+    photos_by_pid = await repo.get_photos_by_product_ids(session, product_ids=[p.id])
+
+    cat = categories_by_id.get(p.category_id) if p.category_id is not None else None
+    return _to_product_read(
+        product=p,
+        category=cat,
+        photoes=photos_by_pid.get(p.id, []),
+    )
 
 
 @router.put("/{product_id}", response_model=ProductRead)
@@ -78,23 +168,52 @@ async def update_product(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
+    svc = ProductsService()
+    repo = ProductsRepository()
+
+    # important: mode="json" converts uuid to str for jsonb
+    fillings = None if payload.fillings is None else [f.model_dump(mode="json", by_alias=True) for f in payload.fillings]
+    ingredients = (
+        None
+        if payload.ingredients is None
+        else [i.model_dump(mode="json", by_alias=True) for i in payload.ingredients]
+    )
+    photo_uris = payload.photo_uris or []
+
     try:
-        return await ProductsService.update(
+        p = await svc.update(
             session,
             owner_id=current_user.id,
             product_id=product_id,
             name=payload.name,
-            description=payload.description,
             price=payload.price,
             category_id=payload.category_id,
-            is_active=payload.is_active,
+            recipe=payload.recipe,
+            unit=payload.unit,
+            fillings=fillings,
+            ingredients=ingredients,
+            photo_uris=photo_uris,
         )
-    except KeyError:
+    except ProductNotFoundError:
         raise HTTPException(status_code=404, detail="product not found")
     except CategoryNotFoundError:
         raise HTTPException(status_code=404, detail="category not found")
     except ProductAlreadyExistsError:
         raise HTTPException(status_code=409, detail="product already exists")
+
+    categories_by_id = await repo.get_categories_by_ids(
+        session,
+        owner_id=current_user.id,
+        category_ids={p.category_id} if p.category_id is not None else set(),
+    )
+    photos_by_pid = await repo.get_photos_by_product_ids(session, product_ids=[p.id])
+
+    cat = categories_by_id.get(p.category_id) if p.category_id is not None else None
+    return _to_product_read(
+        product=p,
+        category=cat,
+        photoes=photos_by_pid.get(p.id, []),
+    )
 
 
 @router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -103,8 +222,9 @@ async def delete_product(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
+    svc = ProductsService()
     try:
-        await ProductsService.delete(session, owner_id=current_user.id, product_id=product_id)
+        await svc.delete(session, owner_id=current_user.id, product_id=product_id)
         return None
-    except KeyError:
+    except ProductNotFoundError:
         raise HTTPException(status_code=404, detail="product not found")
