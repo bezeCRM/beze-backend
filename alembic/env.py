@@ -15,6 +15,8 @@ from app.modules.products.models import (  # noqa: F401
     Product,
     ProductPhoto,
 )
+from app.modules.orders.models import Order, OrderLine  # noqa: F401
+
 
 config = context.config
 
