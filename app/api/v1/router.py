@@ -9,6 +9,7 @@ from app.modules.categories.router import router as categories_router
 from app.modules.products.router import router as products_router
 from app.modules.orders.router import router as orders_router
 from app.modules.planner.router import router as planner_router
+from app.modules.profile.router import router as profile_router
 
 router = APIRouter(prefix="/v1")
 router.include_router(health_router)
@@ -18,3 +19,4 @@ router.include_router(categories_router)
 router.include_router(products_router)
 router.include_router(orders_router)
 router.include_router(planner_router)
+router.include_router(profile_router)

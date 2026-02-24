@@ -5,7 +5,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.api.deps import get_session
 from app.modules.auth.exceptions import (
-    EmailAlreadyExists,
+    LoginAlreadyExists,
     InvalidCredentials,
     TokenInvalid,
     TokenRevoked,
@@ -35,15 +35,15 @@ async def register(
     svc: AuthService = Depends(get_auth_service),
 ) -> TokenPairResponse:
     try:
-        user = await svc.register(session, email=str(data.email), password=data.password)
+        user = await svc.register(session, login=data.login, password=data.password)
         access_token, refresh_token = await svc.login(
             session,
-            email=user.email,
+            login=user.login,
             password=data.password,
         )
         return TokenPairResponse(access_token=access_token, refresh_token=refresh_token)
-    except EmailAlreadyExists:
-        raise HTTPException(status_code=409, detail="email already exists")
+    except LoginAlreadyExists:
+        raise HTTPException(status_code=409, detail="login already exists")
 
 
 @router.post("/login", response_model=TokenPairResponse)
@@ -55,7 +55,7 @@ async def login(
     try:
         access_token, refresh_token = await svc.login(
             session,
-            email=str(data.email),
+            login=data.login,
             password=data.password,
         )
         return TokenPairResponse(access_token=access_token, refresh_token=refresh_token)

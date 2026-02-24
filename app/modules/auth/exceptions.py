@@ -9,7 +9,7 @@ class InvalidCredentials(AuthError):
     pass
 
 
-class EmailAlreadyExists(AuthError):
+class LoginAlreadyExists(AuthError):
     pass
 
 

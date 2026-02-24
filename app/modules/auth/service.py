@@ -16,7 +16,7 @@ from app.core.security import (
 )
 from app.settings import settings
 from app.modules.auth.exceptions import (
-    EmailAlreadyExists,
+    LoginAlreadyExists,
     InvalidCredentials,
     TokenInvalid,
     TokenRevoked,
@@ -53,26 +53,26 @@ class AuthService:
         self._users_repo = users_repo
         self._refresh_repo = refresh_repo
 
-    async def register(self, session: AsyncSession, *, email: str, password: str) -> User:
-        normalized_email = email.lower().strip()
+    async def register(self, session: AsyncSession, *, login: str, password: str) -> User:
+        normalized_login = login.lower().strip()
 
-        existing = await self._users_repo.get_by_email(session, normalized_email)
+        existing = await self._users_repo.get_by_login(session, normalized_login)
         if existing is not None:
-            raise EmailAlreadyExists()
+            raise LoginAlreadyExists()
 
         user = await self._users_repo.create(
             session,
-            email=normalized_email,
+            login=normalized_login,
             password_hash=hash_password(password),
         )
         await session.commit()
         await session.refresh(user)
         return user
 
-    async def login(self, session: AsyncSession, *, email: str, password: str) -> tuple[str, str]:
-        normalized_email = email.lower().strip()
+    async def login(self, session: AsyncSession, *, login: str, password: str) -> tuple[str, str]:
+        normalized_login = login.lower().strip()
 
-        user = await self._users_repo.get_by_email(session, normalized_email)
+        user = await self._users_repo.get_by_login(session, normalized_login)
         if user is None:
             raise InvalidCredentials()
 

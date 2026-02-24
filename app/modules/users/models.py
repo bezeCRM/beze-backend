@@ -20,9 +20,16 @@ class User(SQLModel, table=True):
         default_factory=uuid4,
         sa_column=Column(PGUUID(as_uuid=True), primary_key=True, index=True),
     )
-    email: str = Field(
-        sa_column=Column(String(320), nullable=False, unique=True, index=True),
+
+    login: str = Field(
+        sa_column=Column(String(32), nullable=False, unique=True, index=True),
     )
+
+    email: Optional[str] = Field(
+        default=None,
+        sa_column=Column(String(320), nullable=True, unique=True, index=True),
+    )
+
     password_hash: str = Field(
         sa_column=Column(String(255), nullable=False),
     )
