@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.categories.models import Category
@@ -93,3 +93,19 @@ class ProductsRepository:
         await session.execute(delete(ProductPhoto).where(pp.product_id == product_id))
         for uri in photo_uris:
             session.add(ProductPhoto(product_id=product_id, uri=uri))
+
+    @staticmethod
+    async def clear_category_for_owner(
+            session: AsyncSession,
+            *,
+            owner_id: UUID,
+            category_id: UUID,
+    ) -> int:
+        stmt = (
+            update(Product)
+            .where(Product.owner_id == owner_id, Product.category_id == category_id)
+            .values(category_id=None)
+        )
+        res = await session.execute(stmt)
+        # res.rowcount может быть None в некоторых драйверах, но обычно есть
+        return int(res.rowcount or 0)

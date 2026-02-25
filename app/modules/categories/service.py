@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.categories.models import Category
 from app.modules.categories.repository import CategoriesRepository
+from app.modules.products.repository import ProductsRepository
 
 
 class CategoryAlreadyExistsError(Exception):
@@ -54,5 +55,19 @@ class CategoriesService:
     @staticmethod
     async def delete(session: AsyncSession, *, owner_id: UUID, category_id: UUID) -> None:
         obj = await CategoriesService.get_or_404(session, owner_id=owner_id, category_id=category_id)
-        await CategoriesRepository.delete(session, obj)
-        await session.commit()
+
+        try:
+            # 1) отвязываем категорию у всех товаров пользователя
+            await ProductsRepository.clear_category_for_owner(
+                session,
+                owner_id=owner_id,
+                category_id=category_id,
+            )
+
+            # 2) удаляем саму категорию
+            await CategoriesRepository.delete(session, obj)
+
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
