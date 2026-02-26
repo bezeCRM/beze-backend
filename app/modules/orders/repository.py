@@ -62,6 +62,13 @@ class OrdersRepository:
         return out
 
     @staticmethod
+    async def list_lines_by_order_id(session: AsyncSession, *, order_id: UUID) -> list[OrderLine]:
+        l = OrderLine.__table__.c
+        stmt = select(OrderLine).where(l.order_id == order_id)
+        res = await session.execute(stmt)
+        return list(res.scalars().all())
+
+    @staticmethod
     async def delete_lines_by_order_id(session: AsyncSession, *, order_id: UUID) -> None:
         l = OrderLine.__table__.c
         await session.execute(delete(OrderLine).where(l.order_id == order_id))

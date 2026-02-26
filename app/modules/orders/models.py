@@ -24,12 +24,6 @@ class OrderStatus(str, Enum):
     canceled = "canceled"
 
 
-class OrderPaymentStatus(str, Enum):
-    unpaid = "unpaid"
-    partial = "partial"
-    paid = "paid"
-
-
 class OrderDeliveryType(str, Enum):
     pickup = "pickup"
     delivery = "delivery"
@@ -63,7 +57,6 @@ class Order(SQLModel, table=True):
     extra: dict[str, Any] | None = Field(default=None, sa_column=Column(JSONB, nullable=True))
     references: list[Any] | None = Field(default=None, sa_column=Column(JSONB, nullable=True))
 
-    payment_status: OrderPaymentStatus = Field(default=OrderPaymentStatus.unpaid, nullable=False)
     status: OrderStatus = Field(default=OrderStatus.new, nullable=False)
     paid_amount: int = Field(default=0, nullable=False)
 
@@ -102,7 +95,6 @@ class OrderLine(SQLModel, table=True):
     )  # type: ignore[arg-type]
 
     filling: dict[str, Any] | None = Field(default=None, sa_column=Column(JSONB, nullable=True))
-
     price: int = Field(nullable=False)
 
     unit: ProductUnit = Field(

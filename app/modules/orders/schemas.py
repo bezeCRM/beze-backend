@@ -11,7 +11,6 @@ from app.modules.products.schemas import FillingItem, PhotoItem, ProductRead
 
 
 OrderStatus = Literal["new", "inWork", "ready", "delivered", "canceled"]
-OrderPaymentStatus = Literal["unpaid", "partial", "paid"]
 OrderDeliveryType = Literal["pickup", "delivery"]
 ProductUnit = Literal["piece", "kg"]
 
@@ -69,7 +68,6 @@ class OrderCreate(BaseModel):
     notes: str | None = None
     references: list[OrderReferenceIn] | None = None
 
-    # paymentStatus не просим; вычислим
     status: OrderStatus
     paid_amount: int = Field(alias="paidAmount", ge=0)
 
@@ -78,6 +76,35 @@ class OrderCreate(BaseModel):
 
 class OrderUpdate(OrderCreate):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+
+class OrderPatch(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    name: str | None = None
+
+    client_name: str | None = Field(default=None, alias="clientName", max_length=256)
+    client_phone: str | None = Field(default=None, alias="clientPhone", max_length=64)
+    order_platform: str | None = Field(default=None, alias="orderPlatform", max_length=256)
+
+    delivery_type: OrderDeliveryType | None = Field(default=None, alias="deliveryType")
+    address: str | None = None
+
+    date: str | None = None
+    time: str | None = None
+
+    products: list[OrderProductLineIn] | None = None
+
+    decor_prices: list[OrderDecorPriceIn] | None = Field(default=None, alias="decorPrices")
+    extra: OrderExtra | None = None
+
+    notes: str | None = None
+    references: list[OrderReferenceIn] | None = None
+
+    status: OrderStatus | None = None
+    paid_amount: int | None = Field(default=None, alias="paidAmount", ge=0)
+
+    in_planner: bool | None = Field(default=None, alias="inPlanner")
 
 
 class OrderDecorPriceRead(BaseModel):
@@ -123,7 +150,6 @@ class OrderRead(BaseModel):
     notes: str | None = None
     references: list[PhotoItem] | None = None
 
-    payment_status: OrderPaymentStatus = Field(alias="paymentStatus")
     status: OrderStatus
     paid_amount: int = Field(alias="paidAmount")
 

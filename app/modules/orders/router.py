@@ -15,6 +15,7 @@ from app.modules.orders.schemas import (
     OrderRead,
     OrderUpdate,
     OrderDecorPriceRead,
+    OrderPatch
 )
 from app.modules.orders.service import (
     InvalidFillingError,
@@ -122,7 +123,6 @@ async def _build_order_read(
         extra=order.extra,
         notes=order.notes,
         references=order.references,
-        paymentStatus=order.payment_status.value,
         status=order.status.value,
         paidAmount=order.paid_amount,
         inPlanner=order.in_planner,
@@ -344,3 +344,32 @@ async def delete_order(
         return None
     except OrderNotFoundError:
         raise HTTPException(status_code=404, detail="order not found")
+
+@router.patch("/{order_id}", response_model=OrderRead)
+async def patch_order(
+    order_id: UUID,
+    payload: OrderPatch,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    svc = OrdersService()
+    repo = OrdersRepository()
+
+    try:
+        updated = await svc.patch(session, owner_id=current_user.id, order_id=order_id, payload=payload)
+    except OrderNotFoundError:
+        raise HTTPException(status_code=404, detail="order not found")
+    except ProductNotFoundInOrderError:
+        raise HTTPException(status_code=404, detail="one of products not found")
+    except InvalidFillingError:
+        raise HTTPException(status_code=400, detail="invalid fillingId for selected product")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    lines_by_oid = await repo.get_lines_by_order_ids(session, order_ids=[updated.id])
+    return await _build_order_read(
+        session=session,
+        owner_id=current_user.id,
+        order=updated,
+        lines=lines_by_oid.get(updated.id, []),
+    )
