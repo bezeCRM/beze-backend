@@ -18,17 +18,17 @@ ProductUnit = Literal["piece", "kg"]
 class OrderExtra(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
-    delivery: int = Field(ge=0, default=0)
-    urgency: int = Field(ge=0, default=0)
-    other: int = Field(ge=0, default=0)
-    discount: int = Field(ge=0, default=0)
+    delivery: int = Field(ge=0, le=1000000000, default=0)
+    urgency: int = Field(ge=0, le=1000000000, default=0)
+    other: int = Field(ge=0, le=1000000000, default=0)
+    discount: int = Field(ge=0, le=1000000000, default=0)
 
 
 class OrderDecorPriceIn(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
     product_id: UUID = Field(alias="productId")
-    price: int = Field(ge=0)
+    price: int = Field(ge=0, le=1000000000)
 
 
 class OrderReferenceIn(BaseModel):
@@ -41,7 +41,7 @@ class OrderProductLineIn(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
     product_id: UUID = Field(alias="productId")
-    amount: float = Field(gt=0)
+    amount: float = Field(gt=0, le=1000000000)
     filling_id: UUID | None = Field(default=None, alias="fillingId")
 
 
@@ -50,9 +50,9 @@ class OrderCreate(BaseModel):
 
     name: str | None = None
 
-    client_name: str = Field(alias="clientName", min_length=1, max_length=256)
-    client_phone: str | None = Field(default=None, alias="clientPhone", max_length=64)
-    order_platform: str | None = Field(default=None, alias="orderPlatform", max_length=256)
+    client_name: str = Field(alias="clientName", min_length=1, max_length=128)
+    client_phone: str | None = Field(default=None, alias="clientPhone", max_length=32)
+    order_platform: str | None = Field(default=None, alias="orderPlatform", max_length=128)
 
     delivery_type: OrderDeliveryType = Field(alias="deliveryType")
     address: str | None = None
@@ -65,7 +65,7 @@ class OrderCreate(BaseModel):
     decor_prices: list[OrderDecorPriceIn] | None = Field(default=None, alias="decorPrices")
     extra: OrderExtra | None = None
 
-    notes: str | None = None
+    notes: str | None = Field(default=None, alias="notes", max_length=1024)
     references: list[OrderReferenceIn] | None = None
 
     status: OrderStatus
@@ -83,9 +83,9 @@ class OrderPatch(BaseModel):
 
     name: str | None = None
 
-    client_name: str | None = Field(default=None, alias="clientName", max_length=256)
-    client_phone: str | None = Field(default=None, alias="clientPhone", max_length=64)
-    order_platform: str | None = Field(default=None, alias="orderPlatform", max_length=256)
+    client_name: str | None = Field(default=None, alias="clientName", max_length=128)
+    client_phone: str | None = Field(default=None, alias="clientPhone", max_length=32)
+    order_platform: str | None = Field(default=None, alias="orderPlatform", max_length=128)
 
     delivery_type: OrderDeliveryType | None = Field(default=None, alias="deliveryType")
     address: str | None = None
@@ -102,7 +102,7 @@ class OrderPatch(BaseModel):
     references: list[OrderReferenceIn] | None = None
 
     status: OrderStatus | None = None
-    paid_amount: int | None = Field(default=None, alias="paidAmount", ge=0)
+    paid_amount: int | None = Field(default=None, alias="paidAmount", ge=0, le=1000000000)
 
     in_planner: bool | None = Field(default=None, alias="inPlanner")
 

@@ -4,10 +4,12 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from uuid import UUID, uuid4
 
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.categories.repository import CategoriesRepository
+from app.modules.orders.models import OrderLine
 from app.modules.products.models import Product, ProductUnit
 from app.modules.products.repository import ProductsRepository
 
@@ -21,6 +23,10 @@ class CategoryNotFoundError(Exception):
 
 
 class ProductNotFoundError(Exception):
+    pass
+
+
+class ProductInUseError(Exception):
     pass
 
 
@@ -58,7 +64,9 @@ class ProductsService:
         category_id: UUID | None,
     ) -> List[Product]:
         if category_id is not None:
-            category = await CategoriesRepository.get(session, owner_id=owner_id, category_id=category_id)
+            category = await CategoriesRepository.get(
+                session, owner_id=owner_id, category_id=category_id
+            )
             if category is None:
                 raise CategoryNotFoundError
 
@@ -70,7 +78,9 @@ class ProductsService:
             category_id=category_id,
         )
 
-    async def get_or_404(self, session: AsyncSession, *, owner_id: UUID, product_id: UUID) -> Product:
+    async def get_or_404(
+        self, session: AsyncSession, *, owner_id: UUID, product_id: UUID
+    ) -> Product:
         obj = await self._repo.get_product(session, owner_id=owner_id, product_id=product_id)
         if obj is None:
             raise ProductNotFoundError
@@ -91,7 +101,9 @@ class ProductsService:
         photo_uris: List[str],
     ) -> Product:
         if category_id is not None:
-            category = await CategoriesRepository.get(session, owner_id=owner_id, category_id=category_id)
+            category = await CategoriesRepository.get(
+                session, owner_id=owner_id, category_id=category_id
+            )
             if category is None:
                 raise CategoryNotFoundError
 
@@ -138,7 +150,9 @@ class ProductsService:
         obj = await self.get_or_404(session, owner_id=owner_id, product_id=product_id)
 
         if category_id is not None:
-            category = await CategoriesRepository.get(session, owner_id=owner_id, category_id=category_id)
+            category = await CategoriesRepository.get(
+                session, owner_id=owner_id, category_id=category_id
+            )
             if category is None:
                 raise CategoryNotFoundError
 
@@ -166,7 +180,25 @@ class ProductsService:
             await session.rollback()
             raise ProductAlreadyExistsError
 
+    async def _is_product_used_in_orders(self, session: AsyncSession, *, product_id: UUID) -> bool:
+        stmt = (
+            select(func.count())
+            .select_from(OrderLine)
+            .where(OrderLine.product_id == product_id)
+        )
+        res = await session.execute(stmt)
+        return int(res.scalar_one()) > 0
+
     async def delete(self, session: AsyncSession, *, owner_id: UUID, product_id: UUID) -> None:
         obj = await self.get_or_404(session, owner_id=owner_id, product_id=product_id)
-        await session.delete(obj)
-        await session.commit()
+
+        if await self._is_product_used_in_orders(session, product_id=obj.id):
+            raise ProductInUseError
+
+        try:
+            await session.delete(obj)
+            await session.commit()
+        except IntegrityError:
+            await session.rollback()
+            # safety net if some other fk prevents deletion
+            raise ProductInUseError

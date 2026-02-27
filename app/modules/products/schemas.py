@@ -42,14 +42,14 @@ class IngredientItem(BaseModel):
     name: str = Field(min_length=1, max_length=256)
 
     # required if ingredient exists
-    weight_grams: str = Field(alias="weightGrams", min_length=1, max_length=64)
+    weight_grams: str = Field(alias="weightGrams", min_length=1, max_length=10)
 
 
 class ProductCreate(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
     name: str = Field(min_length=1, max_length=128)
-    price: int = Field(ge=0)
+    price: int = Field(ge=0, le=1_000_000_000)
 
     category_id: UUID | None = None
     recipe: str | None = None
@@ -66,7 +66,7 @@ class ProductUpdate(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
     name: str = Field(min_length=1, max_length=128)
-    price: int = Field(ge=0)
+    price: int = Field(ge=0, le=1_000_000_000)
 
     category_id: UUID | None = None
     recipe: str | None = None

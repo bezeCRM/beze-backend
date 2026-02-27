@@ -11,6 +11,7 @@ from app.modules.products.schemas import ProductCreate, ProductRead, ProductUpda
 from app.modules.products.service import (
     CategoryNotFoundError,
     ProductAlreadyExistsError,
+    ProductInUseError,
     ProductNotFoundError,
     ProductsService,
 )
@@ -19,12 +20,7 @@ from app.modules.users.models import User
 router = APIRouter(prefix="/products", tags=["products"])
 
 
-def _to_product_read(
-    *,
-    product,
-    category,
-    photoes,
-) -> ProductRead:
+def _to_product_read(*, product, category, photoes) -> ProductRead:
     return ProductRead(
         id=product.id,
         name=product.name,
@@ -65,7 +61,9 @@ async def list_products(
     product_ids = [p.id for p in products]
     category_ids = {p.category_id for p in products if p.category_id is not None}
 
-    categories_by_id = await repo.get_categories_by_ids(session, owner_id=current_user.id, category_ids=category_ids)
+    categories_by_id = await repo.get_categories_by_ids(
+        session, owner_id=current_user.id, category_ids=category_ids
+    )
     photos_by_pid = await repo.get_photos_by_product_ids(session, product_ids=product_ids)
 
     out: list[ProductRead] = []
@@ -120,7 +118,11 @@ async def create_product(
     repo = ProductsRepository()
 
     # important: mode="json" converts uuid to str for jsonb
-    fillings = None if payload.fillings is None else [f.model_dump(mode="json", by_alias=True) for f in payload.fillings]
+    fillings = (
+        None
+        if payload.fillings is None
+        else [f.model_dump(mode="json", by_alias=True) for f in payload.fillings]
+    )
     ingredients = (
         None
         if payload.ingredients is None
@@ -172,7 +174,11 @@ async def update_product(
     repo = ProductsRepository()
 
     # important: mode="json" converts uuid to str for jsonb
-    fillings = None if payload.fillings is None else [f.model_dump(mode="json", by_alias=True) for f in payload.fillings]
+    fillings = (
+        None
+        if payload.fillings is None
+        else [f.model_dump(mode="json", by_alias=True) for f in payload.fillings]
+    )
     ingredients = (
         None
         if payload.ingredients is None
@@ -228,3 +234,5 @@ async def delete_product(
         return None
     except ProductNotFoundError:
         raise HTTPException(status_code=404, detail="product not found")
+    except ProductInUseError:
+        raise HTTPException(status_code=409, detail="product is used in orders")
