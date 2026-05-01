@@ -29,5 +29,7 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: Optional[str] = None
     SMTP_FROM: Optional[str] = None
 
+    API_BASE_URL: str = "https://bezecrm.ru/api/v1"
+
 
 settings = Settings()

@@ -5,7 +5,7 @@ from app.settings import settings
 
 
 async def send_reset_email(to: str, token: str) -> None:
-    link = f"{settings.APP_SCHEME}://reset-password?token={token}"
+    link = f"{settings.API_BASE_URL}/auth/reset-password?token={token}"
 
     html = f"""
     <p>Для сброса пароля в BZ CRM нажмите на кнопку ниже.</p>

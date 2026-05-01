@@ -22,6 +22,8 @@ from app.modules.auth.schemas import (
 from app.modules.auth.service import AuthService
 from app.modules.users.repository import UsersRepository
 
+from fastapi.responses import RedirectResponse
+
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
@@ -121,3 +123,7 @@ async def reset_password(
         await svc.reset_password(session, token=data.token, new_password=data.password)
     except ResetTokenInvalid:
         raise HTTPException(status_code=400, detail="invalid or expired token")
+
+@router.get("/reset-password")
+async def reset_password_redirect(token: str) -> RedirectResponse:
+    return RedirectResponse(url=f"beze://reset-password?token={token}")
