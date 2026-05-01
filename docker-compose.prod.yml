@@ -1,0 +1,38 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: beze-postgres
+    restart: unless-stopped
+    env_file:
+      - .postgres.env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - beze_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U liquoree -d beze_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: beze-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8000:8000"
+    networks:
+      - beze_network
+
+volumes:
+  postgres_data:
+
+networks:
+  beze_network:
