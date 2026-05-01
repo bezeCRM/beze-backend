@@ -6,17 +6,18 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.api.deps import get_session
 from app.modules.auth.exceptions import (
     LoginAlreadyExists,
+    EmailAlreadyExists,
     InvalidCredentials,
     TokenInvalid,
-    TokenRevoked,
+    TokenRevoked, ResetTokenInvalid,
 )
-from app.modules.auth.repository import RefreshTokensRepository
+from app.modules.auth.repository import RefreshTokensRepository, PasswordResetTokensRepository
 from app.modules.auth.schemas import (
     LoginRequest,
     LogoutRequest,
     RefreshRequest,
     RegisterRequest,
-    TokenPairResponse,
+    TokenPairResponse, ForgotPasswordRequest, ResetPasswordRequest,
 )
 from app.modules.auth.service import AuthService
 from app.modules.users.repository import UsersRepository
@@ -25,7 +26,11 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 def get_auth_service() -> AuthService:
-    return AuthService(users_repo=UsersRepository(), refresh_repo=RefreshTokensRepository())
+    return AuthService(
+        users_repo=UsersRepository(),
+        refresh_repo=RefreshTokensRepository(),
+        reset_repo=PasswordResetTokensRepository(),
+    )
 
 
 @router.post("/register", response_model=TokenPairResponse, status_code=status.HTTP_201_CREATED)
@@ -35,15 +40,22 @@ async def register(
     svc: AuthService = Depends(get_auth_service),
 ) -> TokenPairResponse:
     try:
-        user = await svc.register(session, login=data.login, password=data.password)
+        user = await svc.register(
+            session,
+            login=data.login,
+            email=data.email,         # ← добавить
+            password=data.password,
+        )
         access_token, refresh_token = await svc.login(
             session,
-            login=user.login,
+            credential=user.login,    # ← было login=
             password=data.password,
         )
         return TokenPairResponse(access_token=access_token, refresh_token=refresh_token)
     except LoginAlreadyExists:
         raise HTTPException(status_code=409, detail="login already exists")
+    except EmailAlreadyExists:        # ← новый обработчик
+        raise HTTPException(status_code=409, detail="email already exists")
 
 
 @router.post("/login", response_model=TokenPairResponse)
@@ -55,7 +67,7 @@ async def login(
     try:
         access_token, refresh_token = await svc.login(
             session,
-            login=data.login,
+            credential=data.credential,  # ← было login=data.login
             password=data.password,
         )
         return TokenPairResponse(access_token=access_token, refresh_token=refresh_token)
@@ -88,3 +100,24 @@ async def logout(
         await svc.logout(session, refresh_token=data.refresh_token)
     except TokenInvalid:
         raise HTTPException(status_code=401, detail="invalid token")
+
+@router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT)
+async def forgot_password(
+    data: ForgotPasswordRequest,
+    session: AsyncSession = Depends(get_session),
+    svc: AuthService = Depends(get_auth_service),
+) -> None:
+    await svc.forgot_password(session, email=data.email)
+    # Всегда 204 — не раскрываем наличие email
+
+
+@router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT)
+async def reset_password(
+    data: ResetPasswordRequest,
+    session: AsyncSession = Depends(get_session),
+    svc: AuthService = Depends(get_auth_service),
+) -> None:
+    try:
+        await svc.reset_password(session, token=data.token, new_password=data.password)
+    except ResetTokenInvalid:
+        raise HTTPException(status_code=400, detail="invalid or expired token")

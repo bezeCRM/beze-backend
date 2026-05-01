@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Optional, cast
 from uuid import UUID
 
@@ -38,9 +39,20 @@ class UsersRepository:
         *,
         login: str,
         password_hash: str,
-        email: Optional[str] = None,
+        email: str,
     ) -> User:
         user = User(login=login, email=email, password_hash=password_hash)
         session.add(user)
         await session.flush()
         return user
+
+    @staticmethod
+    async def update_password(
+            session: AsyncSession,
+            user: User,
+            password_hash: str,
+    ) -> None:
+        user.password_hash = password_hash
+        user.updated_at = datetime.now(timezone.utc)
+        session.add(user)
+        await session.flush()

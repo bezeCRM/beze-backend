@@ -18,7 +18,7 @@ from app.modules.products.models import (  # noqa: F401
 from app.modules.orders.models import Order, OrderLine  # noqa: F401
 from app.modules.planner.models import PlannerTask  # noqa: F401
 from app.modules.profile.models import ProfileSettings # noqa: F401
-
+from app.modules.auth.models import RefreshToken, PasswordResetToken  # noqa: F401
 
 config = context.config
 

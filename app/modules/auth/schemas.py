@@ -5,11 +5,12 @@ from pydantic import BaseModel, EmailStr, Field
 
 class RegisterRequest(BaseModel):
     login: str = Field(min_length=3, max_length=32)
+    email: EmailStr                                   # ← новое
     password: str = Field(min_length=8, max_length=128)
 
 
 class LoginRequest(BaseModel):
-    login: str = Field(min_length=3, max_length=32)
+    credential: str = Field(min_length=3, max_length=320)  # ← было login
     password: str = Field(min_length=1, max_length=128)
 
 
@@ -25,3 +26,10 @@ class TokenPairResponse(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(min_length=10)
+    password: str = Field(min_length=8, max_length=128)

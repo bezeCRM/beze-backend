@@ -12,10 +12,15 @@ class InvalidCredentials(AuthError):
 class LoginAlreadyExists(AuthError):
     pass
 
+class EmailAlreadyExists(AuthError):
+    pass
 
 class TokenInvalid(AuthError):
     pass
 
 
 class TokenRevoked(AuthError):
+    pass
+
+class ResetTokenInvalid(AuthError):
     pass

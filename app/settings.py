@@ -1,4 +1,6 @@
 from enum import Enum
+from typing import Optional
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,6 +20,14 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_TTL_DAYS: int = 30
 
     model_config = SettingsConfigDict(env_file=".env")
+
+    APP_SCHEME: str = "beze"  # deep link scheme из app.json
+
+    SMTP_HOST: Optional[str] = None
+    SMTP_PORT: int = 587
+    SMTP_USER: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+    SMTP_FROM: Optional[str] = None
 
 
 settings = Settings()
