@@ -17,27 +17,31 @@ jobs:
           SERVER_USER: ${{ secrets.SERVER_USER }}
           SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
         run: |
+          set -euo pipefail
+
           mkdir -p ~/.ssh
-          echo "$SERVER_SSH_KEY" > ~/.ssh/beze_backend_deploy
+          chmod 700 ~/.ssh
+
+          printf "%s" "$SERVER_SSH_KEY" > ~/.ssh/beze_backend_deploy
           chmod 600 ~/.ssh/beze_backend_deploy
 
           ssh-keyscan -H "$SERVER_HOST" >> ~/.ssh/known_hosts
 
-          ssh -i ~/.ssh/beze_backend_deploy "$SERVER_USER@$SERVER_HOST" << 'EOF'
-            set -e
+          ssh -T -i ~/.ssh/beze_backend_deploy "$SERVER_USER@$SERVER_HOST" << 'EOF'
+            set -euo pipefail
 
             cd ~/apps/beze-backend
 
             git fetch origin master
             git reset --hard origin/master
 
-            docker compose -f docker-compose.prod.yml build
-
             docker compose -f docker-compose.prod.yml up -d postgres
 
-            docker compose -f docker-compose.prod.yml run --rm backend uv run alembic upgrade head
+            docker compose -f docker-compose.prod.yml build --pull backend
 
-            docker compose -f docker-compose.prod.yml up -d backend
+            docker compose -f docker-compose.prod.yml run --rm --no-deps backend uv run alembic upgrade head
+
+            docker compose -f docker-compose.prod.yml up -d --no-deps --force-recreate backend
 
             docker image prune -f
           EOF
