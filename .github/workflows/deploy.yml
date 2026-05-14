@@ -22,8 +22,10 @@ jobs:
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
 
-          printf "%s" "$SERVER_SSH_KEY" > ~/.ssh/beze_backend_deploy
+          printf '%s\n' "$SERVER_SSH_KEY" | sed 's/\\n/\n/g' | tr -d '\r' > ~/.ssh/beze_backend_deploy
           chmod 600 ~/.ssh/beze_backend_deploy
+
+          ssh-keygen -y -f ~/.ssh/beze_backend_deploy > /dev/null
 
           ssh-keyscan -H "$SERVER_HOST" >> ~/.ssh/known_hosts
 
