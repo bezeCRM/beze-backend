@@ -42,11 +42,6 @@ def build_reset_password_email_html(link: str) -> str:
             <td align="center" style="padding:10px 0 24px;">
               <table cellpadding="0" cellspacing="0" role="presentation">
                 <tr>
-                  <td style="vertical-align:middle;">
-                    <div style="width:38px; height:38px; border:2px solid #fb7faa; border-radius:15px; color:#fb7faa; font-size:24px; line-height:38px; font-weight:700; font-family:'Epilogue', Arial, Helvetica, sans-serif; text-align:center;">
-                      B
-                    </div>
-                  </td>
                   <td style="padding-left:10px; vertical-align:middle;">
                     <div style="font-size:26px; line-height:30px; font-weight:600; color:#090909; letter-spacing:-0.5px; font-family:'Epilogue', Arial, Helvetica, sans-serif;">
                       bezeCRM
@@ -85,7 +80,7 @@ def build_reset_password_email_html(link: str) -> str:
                     <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
                       <tr>
                         <td align="center">
-                          <a href="{safe_link}" target="_blank" style="display:inline-block; min-width:220px; padding:16px 24px; border-radius:20px; background:#fb7faa; color:#ffffff; font-size:17px; line-height:22px; font-weight:600; text-decoration:none; text-align:center; font-family:'Epilogue', Arial, Helvetica, sans-serif;">
+                          <a href="{safe_link}" target="_blank" style="display:inline-block; min-width:220px; padding:16px 24px; border-radius:15px; background:#fb7faa; color:#ffffff; font-size:17px; line-height:22px; font-weight:600; text-decoration:none; text-align:center; font-family:'Epilogue', Arial, Helvetica, sans-serif;">
                             Сбросить пароль
                           </a>
                         </td>
