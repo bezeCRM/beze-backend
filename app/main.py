@@ -4,6 +4,7 @@ from starlette.middleware.cors import CORSMiddleware
 from app.api.v1.router import router as v1_router
 from app.settings import StageEnum, settings
 
+from pathlib import Path
 from fastapi.staticfiles import StaticFiles
 
 IS_PROD = settings.STAGE == StageEnum.PRODUCTION
@@ -28,4 +29,9 @@ app.add_middleware(
 )
 
 app.include_router(v1_router)
+
+Path("media").mkdir(parents=True, exist_ok=True)
+Path("media/profile").mkdir(parents=True, exist_ok=True)
+Path("media/products").mkdir(parents=True, exist_ok=True)
+
 app.mount("/media", StaticFiles(directory="media"), name="media")

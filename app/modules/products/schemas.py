@@ -96,3 +96,8 @@ class ProductRead(BaseModel):
 
     created_at: datetime = Field(alias="createdAt")
     updated_at: datetime = Field(alias="updatedAt")
+
+class ProductPhotoUploadRead(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    uri: str

@@ -1,13 +1,19 @@
 from __future__ import annotations
 
-from uuid import UUID
+from pathlib import Path
+from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_session
 from app.modules.products.repository import ProductsRepository
-from app.modules.products.schemas import ProductCreate, ProductRead, ProductUpdate
+from app.modules.products.schemas import (
+    ProductCreate,
+    ProductPhotoUploadRead,
+    ProductRead,
+    ProductUpdate,
+)
 from app.modules.products.service import (
     CategoryNotFoundError,
     ProductAlreadyExistsError,
@@ -78,6 +84,49 @@ async def list_products(
         )
     return out
 
+ALLOWED_PRODUCT_PHOTO_TYPES = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "image/heic": ".heic",
+    "image/heif": ".heif",
+}
+
+MAX_PRODUCT_PHOTO_BYTES = 5 * 1024 * 1024
+PRODUCT_PHOTOS_DIR = Path("media/products")
+
+
+@router.post("/photos", response_model=ProductPhotoUploadRead)
+async def upload_product_photo(
+    request: Request,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+):
+    content_type = file.content_type or ""
+
+    if content_type not in ALLOWED_PRODUCT_PHOTO_TYPES:
+        raise HTTPException(status_code=400, detail="unsupported image type")
+
+    content = await file.read()
+
+    if not content:
+        raise HTTPException(status_code=400, detail="empty file")
+
+    if len(content) > MAX_PRODUCT_PHOTO_BYTES:
+        raise HTTPException(status_code=400, detail="file is too large")
+
+    PRODUCT_PHOTOS_DIR.mkdir(parents=True, exist_ok=True)
+
+    ext = ALLOWED_PRODUCT_PHOTO_TYPES[content_type]
+    filename = f"{current_user.id}-{uuid4().hex}{ext}"
+    path = PRODUCT_PHOTOS_DIR / filename
+
+    path.write_bytes(content)
+
+    base_url = str(request.base_url).rstrip("/")
+    uri = f"{base_url}/media/products/{filename}"
+
+    return ProductPhotoUploadRead(uri=uri)
 
 @router.get("/{product_id}", response_model=ProductRead)
 async def get_product(
