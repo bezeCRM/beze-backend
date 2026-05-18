@@ -36,6 +36,10 @@ class OrderReferenceIn(BaseModel):
 
     uri: str = Field(min_length=1)
 
+class OrderReferenceUploadRead(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    uri: str
 
 class OrderProductLineIn(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)

@@ -33,5 +33,6 @@ app.include_router(v1_router)
 Path("media").mkdir(parents=True, exist_ok=True)
 Path("media/profile").mkdir(parents=True, exist_ok=True)
 Path("media/products").mkdir(parents=True, exist_ok=True)
+Path("media/orders/references").mkdir(parents=True, exist_ok=True)
 
 app.mount("/media", StaticFiles(directory="media"), name="media")

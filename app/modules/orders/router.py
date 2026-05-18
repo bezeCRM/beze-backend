@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from datetime import date, time
-from uuid import UUID
+from pathlib import Path
+from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_session
@@ -15,7 +16,8 @@ from app.modules.orders.schemas import (
     OrderRead,
     OrderUpdate,
     OrderDecorPriceRead,
-    OrderPatch
+    OrderPatch,
+    OrderReferenceUploadRead,
 )
 from app.modules.orders.service import (
     InvalidFillingError,
@@ -157,6 +159,50 @@ async def list_orders(
             )
         )
     return out
+
+ALLOWED_ORDER_REFERENCE_TYPES = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "image/heic": ".heic",
+    "image/heif": ".heif",
+}
+
+MAX_ORDER_REFERENCE_BYTES = 5 * 1024 * 1024
+ORDER_REFERENCES_DIR = Path("media/orders/references")
+
+
+@router.post("/references", response_model=OrderReferenceUploadRead)
+async def upload_order_reference(
+    request: Request,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+):
+    content_type = file.content_type or ""
+
+    if content_type not in ALLOWED_ORDER_REFERENCE_TYPES:
+        raise HTTPException(status_code=400, detail="unsupported image type")
+
+    content = await file.read()
+
+    if not content:
+        raise HTTPException(status_code=400, detail="empty file")
+
+    if len(content) > MAX_ORDER_REFERENCE_BYTES:
+        raise HTTPException(status_code=400, detail="file is too large")
+
+    ORDER_REFERENCES_DIR.mkdir(parents=True, exist_ok=True)
+
+    ext = ALLOWED_ORDER_REFERENCE_TYPES[content_type]
+    filename = f"{current_user.id}-{uuid4().hex}{ext}"
+    path = ORDER_REFERENCES_DIR / filename
+
+    path.write_bytes(content)
+
+    base_url = str(request.base_url).rstrip("/")
+    uri = f"{base_url}/media/orders/references/{filename}"
+
+    return OrderReferenceUploadRead(uri=uri)
 
 
 @router.get("/{order_id}", response_model=OrderRead)
