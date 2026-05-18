@@ -36,8 +36,21 @@ class ProfileSettingsService:
     def _normalize_photo_uri(value: str | None) -> str | None:
         if value is None:
             return None
+
         v = str(value).strip()
-        return v or None
+
+        if not v:
+            return None
+
+        local_prefixes = ("file://", "content://", "ph://", "blob:")
+
+        if v.startswith(local_prefixes):
+            raise ValueError("photoUri must be a remote url")
+
+        if not (v.startswith("http://") or v.startswith("https://")):
+            raise ValueError("photoUri must be a remote url")
+
+        return v
 
     @staticmethod
     def make_default(*, owner_id: UUID) -> ProfileSettings:

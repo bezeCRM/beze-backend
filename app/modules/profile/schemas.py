@@ -26,3 +26,8 @@ class ProfileSettingsPatch(BaseModel):
     profile_name: Optional[str] = Field(default=None, alias="profileName")
     nickname: Optional[str] = None
     photo_uri: Optional[str] = Field(default=None, alias="photoUri")
+
+class ProfilePhotoUploadRead(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    photo_uri: str = Field(alias="photoUri")
