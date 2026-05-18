@@ -206,7 +206,7 @@ async def upload_order_reference(
         raise HTTPException(status_code=500, detail="host header is missing")
 
     base_url = f"{proto}://{host}".rstrip("/")
-    uri = f"{base_url}/media/orders/references/{filename}"
+    uri = f"{base_url}/api/media/orders/references/{filename}"
 
     return OrderReferenceUploadRead(uri=uri)
 

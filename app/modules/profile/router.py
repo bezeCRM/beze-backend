@@ -65,7 +65,7 @@ async def upload_profile_photo(
         raise HTTPException(status_code=500, detail="host header is missing")
 
     base_url = f"{proto}://{host}".rstrip("/")
-    photo_uri = f"{base_url}/media/profile/{filename}"
+    photo_uri = f"{base_url}/api/media/profile/{filename}"
 
     return ProfilePhotoUploadRead(photo_uri=photo_uri)
 

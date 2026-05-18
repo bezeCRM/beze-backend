@@ -130,7 +130,7 @@ async def upload_product_photo(
         raise HTTPException(status_code=500, detail="host header is missing")
 
     base_url = f"{proto}://{host}".rstrip("/")
-    uri = f"{base_url}/media/products/{filename}"
+    uri = f"{base_url}/api/media/products/{filename}"
 
     return ProductPhotoUploadRead(uri=uri)
 
