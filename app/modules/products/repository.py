@@ -109,3 +109,12 @@ class ProductsRepository:
         res = await session.execute(stmt)
         # res.rowcount может быть None в некоторых драйверах, но обычно есть
         return int(res.rowcount or 0)
+
+    @staticmethod
+    async def delete_photos_by_product_id(
+            session: AsyncSession,
+            *,
+            product_id: UUID,
+    ) -> None:
+        pp = ProductPhoto.__table__.c
+        await session.execute(delete(ProductPhoto).where(pp.product_id == product_id))

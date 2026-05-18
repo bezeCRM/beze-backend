@@ -196,6 +196,8 @@ class ProductsService:
             raise ProductInUseError
 
         try:
+            await self._repo.delete_photos_by_product_id(session, product_id=obj.id)
+
             await session.delete(obj)
             await session.commit()
         except IntegrityError:
