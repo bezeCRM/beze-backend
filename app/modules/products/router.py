@@ -123,7 +123,13 @@ async def upload_product_photo(
 
     path.write_bytes(content)
 
-    base_url = str(request.base_url).rstrip("/")
+    proto = request.headers.get("x-forwarded-proto", request.url.scheme)
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host")
+
+    if not host:
+        raise HTTPException(status_code=500, detail="host header is missing")
+
+    base_url = f"{proto}://{host}".rstrip("/")
     uri = f"{base_url}/media/products/{filename}"
 
     return ProductPhotoUploadRead(uri=uri)
