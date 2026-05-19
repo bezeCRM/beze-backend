@@ -5,7 +5,7 @@ from enum import Enum
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import Column, DateTime, Index, UniqueConstraint
+from sqlalchemy import Column, DateTime, Index, UniqueConstraint, ForeignKey
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
@@ -24,7 +24,9 @@ class ProductPhoto(SQLModel, table=True):
     __table_args__ = (Index("ix_product_photos_product_id", "product_id"),)
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    product_id: UUID = Field(foreign_key="products.id", nullable=False)
+    product_id: UUID = Field(
+        sa_column=Column(ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
+    )
     uri: str = Field(min_length=1, max_length=2000)
 
     created_at: datetime = Field(
@@ -42,8 +44,13 @@ class Product(SQLModel, table=True):
     )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    owner_id: UUID = Field(foreign_key="users.id", nullable=False)
-    category_id: UUID | None = Field(default=None, foreign_key="categories.id", nullable=True)
+    owner_id: UUID = Field(
+        sa_column=Column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    )
+    category_id: UUID | None = Field(
+        default=None,
+        sa_column=Column(ForeignKey("categories.id", ondelete="SET NULL"), nullable=True)
+    )
 
     name: str = Field(min_length=1, max_length=128)
     price: int = Field(nullable=False)

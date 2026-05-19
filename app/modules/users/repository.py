@@ -56,3 +56,8 @@ class UsersRepository:
         user.updated_at = datetime.now(timezone.utc)
         session.add(user)
         await session.flush()
+
+    @staticmethod
+    async def delete(session: AsyncSession, user: User) -> None:
+        await session.delete(user)
+        await session.flush()

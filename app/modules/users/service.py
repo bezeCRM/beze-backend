@@ -42,3 +42,11 @@ class UsersService:
         await session.commit()
         await session.refresh(user)
         return user
+
+    async def delete_current_user(
+        self,
+        session: AsyncSession,
+        user: User,
+    ) -> None:
+        await self._repo.delete(session, user)
+        await session.commit()

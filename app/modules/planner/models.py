@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime as dt
 from uuid import UUID, uuid4
 
-from sqlalchemy import Column, DateTime, Index
+from sqlalchemy import Column, DateTime, Index, ForeignKey
 from sqlmodel import Field, SQLModel
 
 
@@ -19,7 +19,9 @@ class PlannerTask(SQLModel, table=True):
     )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    owner_id: UUID = Field(foreign_key="users.id", nullable=False)
+    owner_id: UUID = Field(
+        sa_column=Column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    )
 
     title: str = Field(min_length=1, max_length=256)
 

@@ -5,8 +5,8 @@ from enum import Enum
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import Column, DateTime, Index, Numeric
 from sqlalchemy.dialects.postgresql import ENUM, JSONB
+from sqlalchemy import Column, DateTime, ForeignKey, Index, Numeric
 from sqlmodel import Field, SQLModel
 
 from app.modules.products.models import ProductUnit
@@ -37,7 +37,9 @@ class Order(SQLModel, table=True):
     )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    owner_id: UUID = Field(foreign_key="users.id", nullable=False)
+    owner_id: UUID = Field(
+        sa_column=Column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    )
 
     name: str | None = Field(default=None, max_length=256)
 
@@ -86,7 +88,9 @@ class OrderLine(SQLModel, table=True):
     )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    order_id: UUID = Field(foreign_key="orders.id", nullable=False)
+    order_id: UUID = Field(
+        sa_column=Column(ForeignKey("orders.id", ondelete="CASCADE"), nullable=False)
+    )
     product_id: UUID = Field(foreign_key="products.id", nullable=False)
 
     amount: float = Field(
